@@ -514,13 +514,20 @@ function openSetPw(){
   `);
 }
 
+function hashPw(s){
+  // simple deterministic hash — no btoa/encodeURIComponent confusion
+  let h=0;
+  for(let i=0;i<s.length;i++){h=Math.imul(31,h)+s.charCodeAt(i)|0}
+  return 'h_'+h;
+}
+
 function createPw(){
   const a=document.getElementById('pw1').value;
   const b=document.getElementById('pw2').value;
   const e=document.getElementById('pwe');
   if(a.length<4){e.textContent='Mínimo 4 caracteres.';return}
   if(a!==b){e.textContent='Senhas não coincidem.';return}
-  adminPw=btoa(encodeURIComponent(a));
+  adminPw=hashPw(a);
   save();closeModal();enterAdmin();
 }
 
@@ -534,6 +541,9 @@ function openLogin(){
         onkeydown="if(event.key==='Enter')doLogin()">
       <div id="pwe" class="pw-err"></div>
       <button class="btn btn-p" style="width:100%;margin-top:.8rem" onclick="doLogin()">Entrar</button>
+      <div style="margin-top:1rem">
+        <button class="btn btn-s" style="font-size:.72rem" onclick="resetPw()">Esqueci a senha</button>
+      </div>
     </div>
   `);
   setTimeout(()=>{const i=document.getElementById('pw1');if(i)i.focus()},100);
@@ -541,8 +551,25 @@ function openLogin(){
 
 function doLogin(){
   const pw=document.getElementById('pw1').value;
-  if(btoa(encodeURIComponent(pw))===adminPw){closeModal();enterAdmin()}
+  // re-read from storage to always have fresh value
+  try{
+    const fresh=JSON.parse(localStorage.getItem('cl_v2')||'{}');
+    if(fresh.adminPw)adminPw=fresh.adminPw;
+  }catch(e){}
+  if(hashPw(pw)===adminPw){closeModal();enterAdmin()}
   else document.getElementById('pwe').textContent='Senha incorreta. 💔';
+}
+
+function resetPw(){
+  if(!confirm('Redefinir senha? Você precisará criar uma nova. As cartinhas NÃO serão apagadas.'))return;
+  try{
+    const d=JSON.parse(localStorage.getItem('cl_v2')||'{}');
+    d.adminPw=null;
+    localStorage.setItem('cl_v2',JSON.stringify(d));
+  }catch(e){}
+  adminPw=null;
+  closeModal();
+  openSetPw();
 }
 
 function enterAdmin(){
